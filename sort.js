@@ -58,24 +58,24 @@ if (isPotato) {
     fs.mkdirSync(potatoDir, { recursive: true });
 }
 
-const Table = require('cli-table3');
+const Table = require("cli-table3");
 
-const head = ['File', 'Project', 'Client', 'Server'];
+const head = ["File", "Project", "Client", "Server"];
 const colWidths = [40, 40, 8, 8];
 
 if (isExclusive) {
-    head.push('Req. Client', 'Req. Server');
+    head.push("Req. Client", "Req. Server");
     colWidths.push(12, 12);
 }
 
 if (isPotato) {
-    head.push('Potato');
+    head.push("Potato");
     colWidths.push(8);
 }
 
 const table = new Table({
     head: head,
-    colWidths: colWidths
+    colWidths: colWidths,
 });
 
 console.log(table.toString());
@@ -109,53 +109,89 @@ async function sort(modsDir) {
                         projectData.server_side === "required" ||
                         projectData.server_side === "optional";
 
-                    const clientMark = isClient ? '✅' : '';
-                    const serverMark = isServer ? '✅' : '';
+                    const clientMark = isClient ? "✅" : "";
+                    const serverMark = isServer ? "✅" : "";
 
-                    const row = [filename, projectData.title, clientMark, serverMark];
+                    const row = [
+                        filename,
+                        projectData.title,
+                        clientMark,
+                        serverMark,
+                    ];
 
                     if (isExclusive) {
-                        row.push(projectData.client_side === 'required' ? '✅' : '', projectData.server_side === 'required' ? '✅' : '');
+                        row.push(
+                            projectData.client_side === "required" ? "✅" : "",
+                            projectData.server_side === "required" ? "✅" : ""
+                        );
                     }
 
                     if (isPotato) {
-                        row.push(projectData.client_side === 'required' && projectData.server_side === 'required' ? '✅' : '');
+                        row.push(
+                            projectData.client_side === "required" &&
+                                projectData.server_side === "required"
+                                ? "✅"
+                                : ""
+                        );
                     }
 
                     table.push(row);
 
-                    if (isPotato && projectData.client_side === "required" && projectData.server_side === "required") {
-                        fs.copyFileSync(filePath, path.join(potatoDir, filename));
+                    if (
+                        isPotato &&
+                        projectData.client_side === "required" &&
+                        projectData.server_side === "required"
+                    ) {
+                        fs.copyFileSync(
+                            filePath,
+                            path.join(potatoDir, filename)
+                        );
                     }
 
                     if (isExclusive) {
                         if (isClient && isServer) {
-                            fs.copyFileSync(filePath, path.join(bothDir, filename));
+                            fs.copyFileSync(
+                                filePath,
+                                path.join(bothDir, filename)
+                            );
                         } else if (isClient) {
-                            fs.copyFileSync(filePath, path.join(clientDir, filename));
+                            fs.copyFileSync(
+                                filePath,
+                                path.join(clientDir, filename)
+                            );
                         } else if (isServer) {
-                            fs.copyFileSync(filePath, path.join(serverDir, filename));
+                            fs.copyFileSync(
+                                filePath,
+                                path.join(serverDir, filename)
+                            );
                         }
                     } else {
                         if (isClient) {
-                            fs.copyFileSync(filePath, path.join(clientDir, filename));
+                            fs.copyFileSync(
+                                filePath,
+                                path.join(clientDir, filename)
+                            );
                         }
                         if (isServer) {
-                            fs.copyFileSync(filePath, path.join(serverDir, filename));
+                            fs.copyFileSync(
+                                filePath,
+                                path.join(serverDir, filename)
+                            );
                         }
                     }
                 } else {
-                    table.push([filename, 'Unknown', '', '']);
+                    table.push([filename, "Unknown", "", ""]);
                 }
             } catch (error) {
-                table.push([filename, 'Error', '', '']);
+                table.push([filename, "Error", "", ""]);
             }
         } else {
             // It's a directory, skip
         }
-        console.log('\x1B[2J\x1B[0;0H'); // Clear console
+        console.log("\x1B[2J\x1B[0;0H"); // Clear console
         console.log(table.toString());
     }
+    return;
 }
 
 async function get(url) {
@@ -173,33 +209,35 @@ async function get(url) {
     return response.json();
 }
 
-sort(modsPath);
-
-if (isBuild) {
-    const output = fs.createWriteStream(path.join(__dirname, "output", "modpack.zip"));
-    const archive = archiver("zip", {
-        zlib: { level: 9 }, // Sets the compression level.
-    });
-
-    output.on("close", function () {
-        console.log(archive.pointer() + " total bytes");
-        console.log(
-            "archiver has been finalized and the output file descriptor has closed."
+sort(modsPath).then(() => {
+    if (isBuild) {
+        const output = fs.createWriteStream(
+            path.join(__dirname, "output", "modpack.zip")
         );
-    });
+        const archive = archiver("zip", {
+            zlib: { level: 9 }, // Sets the compression level.
+        });
 
-    archive.on("error", function (err) {
-        throw err;
-    });
+        output.on("close", function () {
+            console.log(archive.pointer() + " total bytes");
+            console.log(
+                "archiver has been finalized and the output file descriptor has closed."
+            );
+        });
 
-    archive.pipe(output);
+        archive.on("error", function (err) {
+            throw err;
+        });
 
-    if (fs.existsSync(clientDir)) {
-        archive.directory(clientDir, "client");
+        archive.pipe(output);
+
+        if (fs.existsSync(clientDir)) {
+            archive.directory(clientDir, "client");
+        }
+        if (fs.existsSync(potatoDir)) {
+            archive.directory(potatoDir, "potato");
+        }
+
+        archive.finalize();
     }
-    if (fs.existsSync(potatoDir)) {
-        archive.directory(potatoDir, "potato");
-    }
-
-    archive.finalize();
-}
+});
