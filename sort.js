@@ -215,11 +215,11 @@ sort(modsPath).then(() => {
             path.join(__dirname, "output", "modpack.zip")
         );
         const archive = archiver("zip", {
-            zlib: { level: 9 }, // Sets the compression level.
+            zlib: { level: 7 }, // Sets the compression level.
         });
 
         output.on("close", function () {
-            console.log(archive.pointer() + " total bytes");
+            console.log("Modpack size: "+convertBytes(archive.pointer()));
             console.log(
                 "archiver has been finalized and the output file descriptor has closed."
             );
@@ -241,3 +241,9 @@ sort(modsPath).then(() => {
         archive.finalize();
     }
 });
+function convertBytes(bytes) {
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    if (bytes === 0) return "0 Byte";
+    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+    return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
+}
