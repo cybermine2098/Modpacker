@@ -1,0 +1,9 @@
+node_modules
+output/client/*
+output/server/*
+output/exclusive/client/*
+output/exclusive/server/*
+output/exclusive/both/*
+output/potato/*
+output/modpack.zip
+package-lock.json
