@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const archiver = require("archiver");
+const homeDir = require('os').homedir();
 
 const isExclusive = args.includes("-exclusive") || args.includes("-pack");
 const isPotato = args.includes("-potato") || args.includes("-pack");
@@ -25,11 +26,8 @@ if (modsPath) {
     process.exit(1);
 }
 
-if (!modsPath.startsWith("C:/") && !modsPath.startsWith("C:\\")) {
-    modsPath =
-        "C:/Users/Olive/AppData/Roaming/ModrinthApp/profiles/" +
-        modsPath +
-        "/mods";
+if (!path.isAbsolute(modsPath)) {
+    modsPath = path.join(homeDir, "AppData", "Roaming", "ModrinthApp", "profiles", modsPath, "mods");
 }
 
 // Create directories for sorting
@@ -42,6 +40,17 @@ if (isExclusive) {
     serverDir = path.join(exclusiveDir, "server");
     bothDir = path.join(exclusiveDir, "both");
 
+    // Clear and recreate directories
+    if (fs.existsSync(clientDir)) {
+        fs.rmSync(clientDir, { recursive: true, force: true });
+    }
+    if (fs.existsSync(serverDir)) {
+        fs.rmSync(serverDir, { recursive: true, force: true });
+    }
+    if (fs.existsSync(bothDir)) {
+        fs.rmSync(bothDir, { recursive: true, force: true });
+    }
+
     fs.mkdirSync(clientDir, { recursive: true });
     fs.mkdirSync(serverDir, { recursive: true });
     fs.mkdirSync(bothDir, { recursive: true });
@@ -49,12 +58,26 @@ if (isExclusive) {
     clientDir = path.join(__dirname, "output", "client");
     serverDir = path.join(__dirname, "output", "server");
 
+    // Clear and recreate directories
+    if (fs.existsSync(clientDir)) {
+        fs.rmSync(clientDir, { recursive: true, force: true });
+    }
+    if (fs.existsSync(serverDir)) {
+        fs.rmSync(serverDir, { recursive: true, force: true });
+    }
+
     fs.mkdirSync(clientDir, { recursive: true });
     fs.mkdirSync(serverDir, { recursive: true });
 }
 
 if (isPotato) {
     potatoDir = path.join(__dirname, "output", "potato");
+    
+    // Clear and recreate potato directory
+    if (fs.existsSync(potatoDir)) {
+        fs.rmSync(potatoDir, { recursive: true, force: true });
+    }
+    
     fs.mkdirSync(potatoDir, { recursive: true });
 }
 
@@ -180,10 +203,62 @@ async function sort(modsDir) {
                         }
                     }
                 } else {
-                    table.push([filename, "Unknown", "", ""]);
+                    // Unknown mod - treat as required for both client and server
+                    const row = [filename, "Unknown (Patched)", "✅", "✅"];
+                    
+                    if (isExclusive) {
+                        row.push("✅", "✅"); // Required on both client and server
+                    }
+                    
+                    if (isPotato) {
+                        row.push("✅"); // Required for potato instances
+                    }
+                    
+                    table.push(row);
+                    
+                    // Copy to potato folder if potato mode is enabled
+                    if (isPotato) {
+                        fs.copyFileSync(filePath, path.join(potatoDir, filename));
+                    }
+                    
+                    // Copy to appropriate folders
+                    if (isExclusive) {
+                        // In exclusive mode, put in both folder since it's required everywhere
+                        fs.copyFileSync(filePath, path.join(bothDir, filename));
+                    } else {
+                        // In normal mode, put in both client and server folders
+                        fs.copyFileSync(filePath, path.join(clientDir, filename));
+                        fs.copyFileSync(filePath, path.join(serverDir, filename));
+                    }
                 }
             } catch (error) {
-                table.push([filename, "Error", "", ""]);
+                // API error - treat same as unknown mod
+                const row = [filename, "Error (Patched)", "✅", "✅"];
+                
+                if (isExclusive) {
+                    row.push("✅", "✅"); // Required on both client and server
+                }
+                
+                if (isPotato) {
+                    row.push("✅"); // Required for potato instances
+                }
+                
+                table.push(row);
+                
+                // Copy to potato folder if potato mode is enabled
+                if (isPotato) {
+                    fs.copyFileSync(filePath, path.join(potatoDir, filename));
+                }
+                
+                // Copy to appropriate folders
+                if (isExclusive) {
+                    // In exclusive mode, put in both folder since it's required everywhere
+                    fs.copyFileSync(filePath, path.join(bothDir, filename));
+                } else {
+                    // In normal mode, put in both client and server folders
+                    fs.copyFileSync(filePath, path.join(clientDir, filename));
+                    fs.copyFileSync(filePath, path.join(serverDir, filename));
+                }
             }
         } else {
             // It's a directory, skip

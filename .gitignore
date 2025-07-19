@@ -7,3 +7,4 @@ output/exclusive/both/*
 output/potato/*
 output/modpack.zip
 package-lock.json
+server
